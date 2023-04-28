@@ -51,3 +51,9 @@ for node in graph:
 #Print Statement for graph
 for i in graph:
     print( "'" + str(i) + "':" + str(graph[i]))
+    print("\n")
+
+import server
+
+for router in graph:
+    server.createSocket(router, 5000)
