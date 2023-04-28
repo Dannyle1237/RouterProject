@@ -29,10 +29,11 @@ def bellman_ford(graph, start):
 #Main
 
 #Create graph given the input from config(JSON) file
-if len(sys.argv) < 2:
-    print("Error: Type command in CLI python main.py <config_file>")
+if len(sys.argv) < 3:
+    print("Error: Type command in CLI python main.py <config_file> <port number>")
     sys.exit(1)
 
+port = sys.argv[2]
 config_file = sys.argv[1]
 fp = open(config_file)
 config = json.load(fp)
@@ -48,12 +49,20 @@ for node in graph:
     graph[node]['path_cost'] = distances
     graph[node]['path'] = parents
 
+import socket
+listIp = []
 #Print Statement for graph
 for i in graph:
     print( "'" + str(i) + "':" + str(graph[i]))
     print("\n")
+    #listIp.append(int.from_bytes(socket.inet_aton(i), byteorder='big'))
+    
+#print(listIp)
+
+
 
 import server
 
 for router in graph:
-    server.createSocket(router, 5000)
+    #print(router)
+    server.createSocket(router, int(port))
