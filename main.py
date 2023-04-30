@@ -1,68 +1,72 @@
 import sys
 import json
+import distance_vector as dv
+import router as r#Import for router set up funcs 
+import threading
 
-#Function you can input a node into and itll give bellman_ford distance/path back
-def bellman_ford(graph, start):
-    distances = {}
-    for node in graph:
-        distances[node] = float('inf')
-    distances[start] = 0
+#Print Statement for "Topology table"
+def print_topology_table(routers):
+    print("Router\t\tOther Routers with costs")
+    for cur_router in routers:
+        string = ""
+        for router in routers[cur_router]['routing_table']:
+            string += router + ":" + str(routers[cur_router]['routing_table'][router]) + "\t"
+        print(f'{cur_router}\t{string}')
 
-    parents = {v: None for v in graph}
-    #u = root node 
-    #v = node to path
-    for _ in range(len(graph) - 1):
-        for u in graph:
-            for v in graph[u]['connected']:
-                weight = graph[u]['connected'][v]
-                if distances[u] + weight < distances[v]:
-                    distances[v] = distances[u] + weight
-                    parents[v] = u
+#Sending function for sending data
+def update_neighbors(router):
+    routing_table = routers[router]['routing_table']
+    message = {"routing_table": routing_table}
+    json_message = json.dumps(message)
+    for neighbor in routers[router]['connected']:
+        #print(str(router) + " Sending routing table to " + str(neighbor))
+        sockets[router].sendto(json_message.encode(), (neighbor, port))
 
-    for u in graph:
-        for v in graph[u]['connected']:
-            weight = graph[u]['connected'][v]
-            if distances[u] + weight < distances[v]:
-                raise ValueError('Graph contains a negative-weight cycle')
-    return distances, parents
+#Receiving Function to update routing tables
+def receive_messages(router):
+    while True:
+        global routers
+        response, addr = sockets[router].recvfrom(4096)
+        #print(f"{router} Received from {addr}: {response}")
+        response = json.loads(response.decode())
+        if "routing_table" in response:
+            routing_table = routers[router]['routing_table']
+            neighbor_rt = response['routing_table']
+            neighbor_ip = addr[0]
+            routing_table = dv.calculate_dv(routing_table, neighbor_ip, neighbor_rt)
+            routers[router]['routing_table'] = routing_table
+
+def start_receiver_threads():
+    threads = []
+    for router in sockets:
+        thread = threading.Thread(target=receive_messages, args=(router,))
+        thread.start()
+        threads.append(thread)
+    return threads
+
 
 #Main
-
-#Create graph given the input from config(JSON) file
 if len(sys.argv) < 3:
     print("Error: Type command in CLI python main.py <config_file> <port number>")
     sys.exit(1)
-
-port = sys.argv[2]
+#Grab config file and port from sys.argv
+port = int(sys.argv[2])
 config_file = sys.argv[1]
 fp = open(config_file)
 config = json.load(fp)
 
-#'connected' for Connected Nodes with their associated costs
-graph = {node: {'connected': {}} for node in config['ROUTERS']['routers']}
-for node in graph:
-    graph[node]['connected'] = config['ROUTERS']['vertices'][node]
-
-#Add paths for each node in graph to every other node using Bellman Ford Algo
-for node in graph:
-    distances, parents = bellman_ford(graph, node)
-    graph[node]['path_cost'] = distances
-    graph[node]['path'] = parents
-
-import socket
-listIp = []
-#Print Statement for graph
-for i in graph:
-    print( "'" + str(i) + "':" + str(graph[i]))
-    print("\n")
-    #listIp.append(int.from_bytes(socket.inet_aton(i), byteorder='big'))
-    
-#print(listIp)
+#set up routers given config file in CLI
+routers = r.setup_routers(config)
+print(routers)
+#bind socket to each router
+sockets = r.setup_sockets(routers, port)
 
 
+# Start receiver threads to listen for incoming messages
+receiver_threads = start_receiver_threads()
 
-import server
-
-for router in graph:
-    #print(router)
-    server.createSocket(router, int(port))
+while True:
+    # Send updated routing tables to neighbors
+    for router in sockets:
+        update_neighbors(router)
+    print_topology_table(routers) 
