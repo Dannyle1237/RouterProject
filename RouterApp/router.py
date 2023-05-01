@@ -1,3 +1,6 @@
+#Danny Le, Raunak Kunwar
+#1001794802, ##########
+#CSE 4344
 import socket
 
 #setup routers given config file, returns a set imitating a router structure
@@ -23,8 +26,10 @@ def setup_routers(config):
 #Func to bind sockets given list of routers(ips)
 def setup_sockets(routers, port):
     sockets = {}
+    print("\nSpecification 4c\n")
     for idx, router in enumerate(routers):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(5)
         sock.bind((router, port))
         sockets[router] = sock
 
@@ -32,5 +37,5 @@ def setup_sockets(routers, port):
         router_port = port
         connection_type = 'UDP'
         #specification 4c
-        #print(f"Router {idx+1} IP: {router_ip}, Port: {router_port}, Connection Type: {connection_type}")
+        print(f"Router {idx+1} IP: {router_ip}, Port: {router_port}, Connection Type: {connection_type}")
     return sockets

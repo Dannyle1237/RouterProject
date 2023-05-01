@@ -1,3 +1,6 @@
+#Danny Le, Raunak Kunwar
+#1001794802, 1001742301
+#CSE 4344
 def calculate_dv(router_table, neighbor, neighbor_table):
     updated_table = {}
     for dest in router_table:
